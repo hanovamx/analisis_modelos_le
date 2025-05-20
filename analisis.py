@@ -11,31 +11,53 @@ conn = pyodbc.connect(
     'PWD=Tec12345!'
 )
 
+# --- QUERY: Vendidos (uno por cada venta, cantidad=1) y no vendidos (cantidad=0) ---
 query = """
 SELECT
   P.idProducto,
   F.Nombre as Familia,
-  fd.Nombre AS Descripcion
+  fd.Nombre AS Descripcion,
+  1 as CantidadVendida
 FROM PV_VentasLineas VL
 LEFT JOIN IN_Productos P ON VL.idProducto = P.idProducto
 LEFT JOIN CAT_Familias F ON P.idFamilia = F.idFamilia
 LEFT JOIN CAT_FamiliasDescripciones FD ON P.idDescripcion = FD.idDescripcion
-WHERE VL.idVentaLinea IN(
-    SELECT idVentaLinea
+WHERE P.idProducto IN(
+    SELECT idProducto
     FROM PV_VentasLineas VL JOIN PV_Ventas V ON VL.idVenta = V.idVenta
     WHERE Fecha >= '20240101' AND Fecha <= '20241231'
 )
-ORDER BY P.idProducto ASC
+UNION ALL
+SELECT
+  P.idProducto,
+  F.Nombre AS Familia,
+  FD.Nombre AS Descripcion,
+  0 AS CantidadVendida
+FROM IN_Productos P
+LEFT JOIN CAT_Familias F ON P.idFamilia = F.idFamilia
+LEFT JOIN CAT_FamiliasDescripciones FD ON P.idDescripcion = FD.idDescripcion
+WHERE P.idProducto IN (
+    SELECT DISTINCT idProducto
+    FROM IN_FacturasDet
+    WHERE FechaReg >= '20240101' AND FechaReg <= '20241231'
+)
+AND P.idProducto NOT IN (
+    SELECT DISTINCT VL.idProducto
+    FROM PV_VentasLineas VL
+    INNER JOIN PV_Ventas V ON VL.idVenta = V.idVenta
+    WHERE V.Fecha >= '20240101' AND V.Fecha <= '20241231'
+)
 """
 
 df = pd.read_sql(query, conn)
 conn.close()
 
+# Limpieza y normalización
 df["Descripcion"] = df["Descripcion"].astype(str).str.strip().str.upper()
 df["Familia"] = df["Familia"].astype(str).str.strip().str.upper()
 
-# Conteo de ventas por Familia y Descripcion
-ventas = df.groupby(["Familia", "Descripcion"]).size().reset_index(name="CantidadVendida")
+# Agrupa por producto, familia y descripción para sumar ventas (por si hay varias filas para el mismo producto)
+ventas = df.groupby(['idProducto', 'Familia', 'Descripcion'], as_index=False)['CantidadVendida'].sum()
 
 # Fuzzy Matching por familia
 descripcion_map = {}
@@ -56,6 +78,7 @@ ventas["Descripcion_clean"] = ventas.apply(
     axis=1
 )
 
+# Suma por familia + descripción limpia para obtener la venta total por agrupamiento
 ventas_clean = ventas.groupby(["Familia", "Descripcion_clean"]).agg({"CantidadVendida": "sum"}).reset_index()
 
 # Lógica adaptativa para agrupación
@@ -94,9 +117,9 @@ for familia, grupo in ventas_clean.groupby("Familia"):
 
 ventas_final = pd.concat(agrupados)
 
-# Exporta resultado
+# Output para Streamlit
 ventas_final.to_excel("productos_limpios.xlsx", index=False)
-print("Archivo productos_limpios.xlsx generado con columnas 'Descripcion_clean', 'Descripcion_final', 'CantidadVendida', 'Es_Otros'.")
+print("Archivo productos_limpios.xlsx generado con productos vendidos y NO vendidos.")
 
 # Log de clusters fuzzy
 fuzzy_log = pd.DataFrame([
