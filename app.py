@@ -4,7 +4,53 @@ import matplotlib.pyplot as plt
 import io
 
 st.set_page_config(page_title="Análisis de Productos Vendidos", layout="wide")
-st.title("Análisis de Ventas: Descripciones Limpias y Outliers Agrupados")
+
+# --- Branding y estilos personalizados ---
+LOGO_PATH = "logo.png"
+PRIMARY_COLOR = "#DC6737"
+SECONDARY_COLOR = "#14264C"
+DARK_BLUE = "#0D1D39"
+
+# CSS personalizado para branding
+st.markdown(f"""
+    <style>
+    .main-title {{
+        color: {DARK_BLUE};
+        font-size: 2.8rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.2em;
+    }}
+    .subtitle, .stHeader, .stSubheader {{
+        color: {PRIMARY_COLOR} !important;
+    }}
+    .css-1v0mbdj, .stDataFrame {{
+        border-radius: 10px;
+        border: 1.5px solid {SECONDARY_COLOR};
+    }}
+    .stButton>button {{
+        background-color: {PRIMARY_COLOR};
+        color: white;
+        border-radius: 6px;
+        border: none;
+        font-weight: 600;
+    }}
+    .stDownloadButton>button {{
+        background-color: {SECONDARY_COLOR};
+        color: white;
+        border-radius: 6px;
+        font-weight: 600;
+    }}
+    .stSidebar {{
+        background-color: #f7f8fa;
+    }}
+    </style>
+""", unsafe_allow_html=True)
+
+# Mostrar logo y título principal
+st.image(LOGO_PATH, width=120)
+
+st.title("Análisis de Ventas 2024: Descripciones Limpias y Outliers Agrupados")
 
 @st.cache_data
 def load_data():
