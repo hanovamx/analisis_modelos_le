@@ -68,9 +68,17 @@ def pagina_ventas():
     n_otros = df_fam["Es_Otros"].sum()
     n_total = len(df_fam)
     porc_otros = (n_otros / n_total) * 100 if n_total > 0 else 0
+    # Calcula el porcentaje de ventas sobre el total de la familia
+    total_ventas = df_fam["CantidadVendida"].sum()
+    df_fam["% del total"] = df_fam["CantidadVendida"] / total_ventas * 100 if total_ventas > 0 else 0
+    df_fam["% del total"] = df_fam["% del total"].round(2)
+
     st.header(f"Familia seleccionada: {familia}")
     st.subheader("Tabla de descripciones (limpias y finales) con cantidad vendida")
-    st.dataframe(df_fam[["Descripcion_clean", "Descripcion_final", "CantidadVendida"]].sort_values("CantidadVendida", ascending=False), use_container_width=True)
+    st.dataframe(
+        df_fam[["Descripcion_clean", "Descripcion_final", "CantidadVendida", "% del total"]].sort_values("CantidadVendida", ascending=False),
+        use_container_width=True
+    )
     st.markdown(f"**Productos agrupados como 'OTROS':** {n_otros} de {n_total} ({porc_otros:.1f}%)")
     st.subheader("Distribución de cantidad vendida por descripción limpia")
     fig, ax = plt.subplots(figsize=(10, 4))
@@ -81,7 +89,7 @@ def pagina_ventas():
     outliers = df_fam[df_fam["Es_Otros"] == 1]
     if not outliers.empty:
         st.subheader("Descripciones agrupadas como 'OTROS'")
-        st.dataframe(outliers[["Descripcion_clean", "Descripcion_final", "CantidadVendida"]], use_container_width=True)
+        st.dataframe(outliers[["Descripcion_clean", "Descripcion_final", "CantidadVendida", "% del total"]], use_container_width=True)
     else:
         st.info("No hay agrupaciones 'OTROS' en esta familia.")
     # Botón de descarga de Excel
